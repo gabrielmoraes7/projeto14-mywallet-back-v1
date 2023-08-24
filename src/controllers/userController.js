@@ -1,7 +1,7 @@
 import bcrypt from 'bcrypt';
 import { db } from '../database/connection.js';
 import { schemaCadastro, schemaLogin } from '../schemas/user.schemas';
-import jwt from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';  //biblioteca que gera o token utilizado pelo usuario para rodar pelo app enquanto logado
 
 const createUser = async (req, res) => {
   const { nome, email, senha, confirmaSenha } = req.body;
