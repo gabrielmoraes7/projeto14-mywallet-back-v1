@@ -1,16 +1,12 @@
-const express = require('express');
 import { Router } from "express"
-import { listTransactions, addTransaction } from "../controllers/transactionController"
-import { schemaMiddleware } from "../middlewares/schemaMiddleware"
-import { schemaTransacao } from "../schemas/transaction.schemas"
-import { authMiddleware } from "../middlewares/authMiddleware"
+import { createTransaction, deleteTransaction, editTransaction, getTransactions } from "../controllers/transaction.controller.js"
+import { schemaValidation } from "../middlewares/schemaMiddleware"
+import { transactionSchema } from "../schemas/transaction.schemas.js"
+import { validateAuth } from "../middlewares/authMiddleware"
 
-const useRouter = express.Router();
+const transactionRouter = Router()
 
-useRouter.post(
-  '/nova-transacao',
-  authMiddleware,addTransaction
-);
-useRouter.get('/transacoes', authMiddleware,listTransactions);
-
-export default useRouter
+transactionRouter.post("/transactions", validateAuth, schemaValidation(transactionSchema), createTransaction)
+transactionRouter.get("/transactions", validateAuth, getTransactions)
+transactionRouter.delete("/transactions/:id", deleteTransaction)
+transactionRouter.put("/transactions/:id", schemaValidation(transactionSchema), editTransaction)
