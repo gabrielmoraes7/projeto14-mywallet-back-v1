@@ -8,7 +8,6 @@ const app = express()
 app.use(router)
 app.use(express.json())
 app.use(cors())
-dotenv.config()
 
 const port = process.env.PORT || 5000
 app.listen(port, () => {

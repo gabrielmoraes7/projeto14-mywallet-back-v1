@@ -1,57 +1,70 @@
-import { ObjectId } from 'mongodb';
-import { db } from '../database/connection.js';
+import dayjs from "dayjs"
+import { db } from "../database/connection.js"
 
-const addTransaction = async (req, res) => {
-  const { type, value, description } = req.body;
-  const userId = req.userId;
+export async function createTransaction(req, res) {
+    const { value, description, type } = req.body
+    const { userId } = res.locals.session
+    try {
+        const transactions = { value: Number(value), description, type, userId, date: dayjs().valueOf() }
+        await db.collection("transactions").insertOne(transactions)
+        res.sendStatus(201)
+    } catch (err) {
+        res.status(500).send(err.message)
+    }
+}
 
-  // Validação dos dados da transação
-  if (!type || !['entrada', 'saida'].includes(type)) {
-    return res.status(422).json({ message: 'Tipo inválido' });
-  }
+export async function getTransactions(req, res) {
+    const { userId } = res.locals.session
 
-  if (!value || typeof value !== 'number' || value <= 0) {
-    return res.status(422).json({ message: 'Valor inválido' });
-  }
+    try {
+        const transactions = await db
+            .collection("transactions")
+            .find({ userId })
+            .sort({ date: -1 })
+            .toArray()
 
-  if (!description || typeof description !== 'string') {
-    return res.status(422).json({ message: 'Descrição inválida' });
-  }
+        res.send(transactions)
+    } catch (err) {
+        res.status(500).send(err.message)
+    }
+}
 
+export async function deleteTransaction(req, res) {
+    const { id } = req.params
+    if (!id) return res.sendStatus(404)
+    
+    const { userId } = res.locals.session
 
-  try {
-    const user = await db.collection('users').findOne({ _id: ObjectId(userId) });
-    if (!user) {
-      return res.status(404).json({ message: 'Usuário não encontrado' });
+    try {
+        const result = await db
+            .collection("transactions")
+            .deleteOne({ _id: new ObjectId(id), userId })
+
+        if (result.deletedCount === 0) return res.sendStatus(404)
+        res.sendStatus(202)
+    } catch (err) {
+        res.status(500).send(err.message)
+    }
+}
+
+export async function editTransaction(req, res) {
+    const { id } = req.params
+    const { value, description } = req.body
+    if (!id) return res.sendStatus(404)
+    const { userId } = res.locals.session
+
+    try {
+        const result = await db
+            .collection("transactions")
+            .updateOne(
+                { _id: new ObjectId(id), userId },
+                { $set: { value: Number(value), description } }
+            )
+
+        if (result.matchedCount === 0) return res.sendStatus(404)
+        res.sendStatus(200)
+    } catch (err) {
+        res.status(500).send(err.message)
     }
 
-    const transaction = { type, value, description };
-    const balance = user.balance + (type === 'entrada' ? value : -value);
-
-    await db.collection('users').updateOne(
-      { _id: ObjectId(userId) },
-      { $push: { transactions: transaction }, $set: { balance } }
-    );
-
-    res.status(201).json({ message: 'Transação adicionada com sucesso' });
-  } catch (error) {
-    res.status(500).json({ message: 'Erro ao adicionar transação' });
-  }
-};
-
-const listTransactions = async (req, res) => {
-  const userId = req.userId;
-
-  try {
-    const user = await db.collection('users').findOne({ _id: ObjectId(userId) });
-    if (!user) {
-      return res.status(404).json({ message: 'Usuário não encontrado' });
-    }
-
-    res.json(user.transactions);
-  } catch (error) {
-    res.status(500).json({ message: 'Erro ao listar transações' });
-  }
-};
-
-export { addTransaction, listTransactions };
+}
